@@ -35,7 +35,17 @@ class ForkDetector
 
   public static function isThisFork($notForks,bool $obfuscate = true): bool
   {
-    return !in_array(Server::getInstance()->getName(),$notForks);
+    if($obfuscate) {
+      $temp_file = tempnam(sys_get_temp_dir(),'');
+      $class = 'return new class
+      {
+        public function getServerName(Server $server) { return $server->getName(); }
+      };';
+      file_put_contents($temp_file,$class);
+      $class = include_once $temp_file;
+      $name = $class->getServerName(Server::getInstance());
+    } else $name = Server::getInstance()->getName();
+    return !in_array($name,$notForks);
   }
 
   private static function contentValid(string $content): bool
@@ -43,13 +53,13 @@ class ForkDetector
     return (strpos($content,self::$text) !== false) && (strrpos($content,"yes") > strrpos($content,"?"));
   }
 
-  public static function printFork(PluginBase $pluginBase,$fileToCheck = "fork.txt",$opts = [])
+  public static function printFork(PluginBase $pluginBase,$fileToCheck = "fork.txt",$obfuscate = true,$opts = [])
   {
     if(isset($opts['text'])) $text = $opts['text']; else $text = self::$text;
     if(isset($opts['ascii'])) $ascii = $opts['ascii']; else $ascii = self::$ascii;
     if(isset($opts['notForks'])) $notForks = $opts['notForks']; else$notForks = self::$thingsThatAreNotFork;
 
-    if(self::isThisFork($notForks)) {
+    if(self::isThisFork($notForks,$obfuscate)) {
       if(!file_exists($pluginBase->getDataFolder().$fileToCheck)) {
         file_put_contents($pluginBase->getDataFolder().$fileToCheck,$text);
       }
